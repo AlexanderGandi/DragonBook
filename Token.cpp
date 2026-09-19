@@ -4,8 +4,7 @@
 
 #include "Token.h"
 
-namespace {
-constexpr const char *TOKEN_TYPE_NAMES[] = {
+static constexpr const char *TOKEN_TYPE_NAMES[] = {
     "TokenType::TK_LEFT_PAREN",
     "TokenType::TK_RIGHT_PAREN",
     "TokenType::TK_LEFT_BRACE",
@@ -53,7 +52,6 @@ constexpr const char *TOKEN_TYPE_NAMES[] = {
     "TokenType::TK_KW_BYTE",
     "TokenType::TK_EOF",
 };
-}
 
 const char *toString(TokenType tokenType) {
     return TOKEN_TYPE_NAMES[static_cast<int>(tokenType)];
