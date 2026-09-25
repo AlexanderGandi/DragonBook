@@ -3,6 +3,7 @@
 //
 
 #include <format>
+#include <string_view>
 
 #include "Lexer.h"
 #include "Token.h"
@@ -12,12 +13,35 @@ void PrintTo(const TokenType tokenType, std::ostream *os) {
     *os << toString(tokenType) << "(" << tokenType << ")";
 }
 
-static void checkTokenFlow(Lexer &lexer, const std::vector<TokenType> &types) {
-    auto current = lexer.currentToken();
+static Lexer *createLexer(const std::string &code) {
+    auto viewer = new CodeViewer(code, InputStream::STDIN);
+    return new Lexer(viewer);
+}
+
+static void checkTokenFlow(Lexer *lexer, const std::vector<TokenType> &types) {
+    auto current = lexer->currentToken();
     for (auto expect : types) {
         EXPECT_EQ(current->type, expect) << "Expect token type "
         << toString(expect) << ", but got " << toString(current->type);
-        current = lexer.nextToken();
+        current = lexer->nextToken();
+    }
+}
+
+struct NumberCase {
+    const char *source;
+    TokenType type;
+};
+
+static void checkNumberCases(const NumberCase *cases, const size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        const auto &[source, expectedType] = cases[i];
+        SCOPED_TRACE(std::format("Checking: {}", source));
+
+        auto lexer = createLexer(source);
+        const auto *token = lexer->currentToken();
+        ASSERT_EQ(token->type, expectedType);
+        EXPECT_EQ(token->span.content, std::string_view(source));
+        EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
     }
 }
 
@@ -32,12 +56,12 @@ TEST(LexerTest, CommentAndSpace) {
     for (auto &[code, flow] : SAMPLES) {
         SCOPED_TRACE(std::format("Testing: {}", code));
         try {
-            auto lexer = Lexer(code, "");
+            auto lexer = createLexer(code);
             checkTokenFlow(lexer, flow);
         } catch (LexerException &e) {
             auto pos = e.getPosition();
             FAIL() << "Unexpected LexerException here: " << e.what() << "("
-            << pos.line << ", " << pos.col << ")";
+            << pos.cursor.idx << ")";
         }
     }
 }
@@ -49,67 +73,102 @@ TEST(LexerTest, Symbol) {
 
     for (auto &[code, flow] : CORRECT_SAMPLES) {
         SCOPED_TRACE(std::format("Checking: {}", code));
-        auto lexer = Lexer(code, "");
+        auto lexer = createLexer(code);
         checkTokenFlow(lexer, flow);
     }
 }
 
-TEST(LexerTest, Number) {
-    const std::pair<const char *, std::vector<TokenType>> CORRECT_SAMPLES[] = {
-        {"0", {TK_INT_LITERAL, TK_EOF}},
-        {"0l", {TK_LONG_LITERAL, TK_EOF}},
-        {"0xDadaCafe", {TK_INT_LITERAL, TK_EOF}},
-        {"7", {TK_INT_LITERAL, TK_EOF}},
-        {"12345", {TK_INT_LITERAL, TK_EOF}},
-        {"0x456", {TK_INT_LITERAL, TK_EOF}},
-        {"0XABCDEF", {TK_INT_LITERAL, TK_EOF}},
-        {"01234", {TK_INT_LITERAL, TK_EOF}},
-        {"123f", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"123F", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"12347d", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"12347D", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0f", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0d", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123f", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0123F", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0123d", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123D", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123.", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"123456.f", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"123456.F", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0123.d", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123.D", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123.f", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0123.F", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0123e0123", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123E0124", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0123e0123f", {TK_FLOAT_LITERAL, TK_EOF}},
-        {"0123E0124D", {TK_DOUBLE_LITERAL, TK_EOF}},
-        {"0x123E0124", {TK_INT_LITERAL, TK_EOF}},
-        {"0x123E0124L", {TK_INT_LITERAL, TK_EOF}},
-
+TEST(LexerTest, DecimalIntegerLiterals) {
+    constexpr NumberCase cases[] = {
+        {"0", TK_DECIMAL_LITERAL},
+        {"123", TK_DECIMAL_LITERAL},
+        {"0L", TK_DECIMAL_LONG_LITERAL},
+        {"123L", TK_DECIMAL_LONG_LITERAL},
     };
-
-    for (auto &[code, flow] : CORRECT_SAMPLES) {
-        SCOPED_TRACE(std::format("Checking: {}", code));
-        auto lexer = Lexer(code, "");
-        checkTokenFlow(lexer, flow);
-    }
+    checkNumberCases(cases, sizeof(cases) / sizeof(cases[0]));
 }
 
-TEST(LexerTest, InvalidNumber) {
+TEST(LexerTest, HexadecimalIntegerLiterals) {
+    constexpr NumberCase cases[] = {
+        {"0x0", TK_HEX_LITERAL},
+        {"0x1A3F", TK_HEX_LITERAL},
+        {"0XabcL", TK_HEX_LONG_LITERAL},
+        {"0xDadaCafe", TK_HEX_LITERAL},
+    };
+    checkNumberCases(cases, sizeof(cases) / sizeof(cases[0]));
+}
+
+TEST(LexerTest, OctalIntegerLiterals) {
+    constexpr NumberCase cases[] = {
+        {"00", TK_OCT_LITERAL},
+        {"0777", TK_OCT_LITERAL},
+        {"0123L", TK_OCT_LONG_LITERAL},
+    };
+    checkNumberCases(cases, sizeof(cases) / sizeof(cases[0]));
+}
+
+TEST(LexerTest, DecimalFloatingPointLiterals) {
+    constexpr NumberCase cases[] = {
+        {"123.456", TK_DECIMAL_DOUBLE_LITERAL},
+        {".456", TK_DECIMAL_DOUBLE_LITERAL},
+        {"123.", TK_DECIMAL_DOUBLE_LITERAL},
+        {"123.e10", TK_DECIMAL_DOUBLE_LITERAL},
+        {".456e-10", TK_DECIMAL_DOUBLE_LITERAL},
+        {"0123.456", TK_DECIMAL_DOUBLE_LITERAL},
+        {"123f", TK_DECIMAL_FLOAT_LITERAL},
+        {"123D", TK_DECIMAL_DOUBLE_LITERAL},
+    };
+    checkNumberCases(cases, sizeof(cases) / sizeof(cases[0]));
+}
+
+TEST(LexerTest, HexadecimalFloatingPointLiterals) {
+    constexpr NumberCase cases[] = {
+        {"0x1.0p-5D", TK_HEX_DOUBLE_LITERAL},
+        {"0XFFp10", TK_HEX_DOUBLE_LITERAL},
+        {"0x.A1p2f", TK_HEX_FLOAT_LITERAL},
+        {"0x10.P+3", TK_HEX_DOUBLE_LITERAL},
+        {"0x123p0124", TK_HEX_DOUBLE_LITERAL},
+    };
+    checkNumberCases(cases, sizeof(cases) / sizeof(cases[0]));
+}
+
+TEST(LexerTest, NumberBoundaries) {
+    auto lexer = createLexer("123+456");
+    EXPECT_EQ(lexer->currentToken()->type, TK_DECIMAL_LITERAL);
+    EXPECT_EQ(lexer->currentToken()->span.content, "123");
+    EXPECT_EQ(lexer->nextToken()->type, TK_PLUS);
+    EXPECT_EQ(lexer->nextToken()->type, TK_DECIMAL_LITERAL);
+    EXPECT_EQ(lexer->currentToken()->span.content, "456");
+    EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
+
+    lexer = createLexer("123abc");
+    EXPECT_EQ(lexer->currentToken()->type, TK_DECIMAL_LITERAL);
+    EXPECT_EQ(lexer->currentToken()->span.content, "123");
+    EXPECT_EQ(lexer->nextToken()->type, TK_IDENTIFIER);
+    EXPECT_EQ(lexer->currentToken()->span.content, "abc");
+    EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
+
+    lexer = createLexer(".");
+    EXPECT_EQ(lexer->currentToken()->type, TK_DOT);
+    EXPECT_EQ(lexer->currentToken()->span.content, ".");
+    EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
+}
+
+TEST(LexerTest, InvalidNumberLiterals) {
     constexpr std::pair<const char *, const char *> ERROR_SAMPLES[] = {
-        {"01238", "illegal digit on an octal literal"},
         {"0x123.456", "malformed floating-point literal"},
+        {"0x.p123", "hexadecimal numbers must contain at least one hexadecimal digit"},
+        {"0x12.p", "malformed floating-point literal"},
+        {"01238", "illegal digit on an octal literal"},
     };
 
     for (auto &[code, message] : ERROR_SAMPLES) {
         SCOPED_TRACE(std::format("Checking: {}", code));
         try {
-            Lexer lexer(code, "");
+            auto lexer = createLexer(code);
             FAIL() << "Expected LexerException for invalid numeric literal";
-        } catch (const LexerException &exception) {
-            EXPECT_STREQ(exception.what(), message);
+        } catch (const LexerException &e) {
+            EXPECT_STREQ(e.what(), message);
         }
     }
 }

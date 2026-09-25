@@ -7,6 +7,8 @@ project(DragonBook
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(FetchContent)
+
 add_library(core
         Token.cpp
         Token.h
@@ -22,15 +24,22 @@ add_library(core
         CodeViewer.h
         Environment.cpp
         Environment.h
+        LexerUtils.cpp
+        LexerUtils.h
+        ExceptionReporter.cpp
+        ExceptionReporter.h
+        CodeManager.cpp
+        CodeManager.h
 )
 
 target_include_directories(core
         PUBLIC
         ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/external/include/
 )
 
 add_executable(DragonBook main.cpp)
-target_link_libraries(DragonBook core)
+target_link_libraries(DragonBook PRIVATE core)
 
 enable_testing()
 

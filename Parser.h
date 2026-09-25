@@ -18,20 +18,20 @@ private:
     ASTNode *logicalOr();
     ASTNode *logicalAnd();
     ASTNode *exclusiveOrExpression();
-    ASTNode * andExpression();
-    ASTNode * equalityExpression();
-    ASTNode * relationalExpression();
-    ASTNode * shiftExpression();
-    ASTNode * additiveExpression();
-    ASTNode * multiplicativeExpression();
-    ASTNode * unaryExpression();
-    ASTNode * unaryExpressionNotPlusMinus();
-    ASTNode * postfixExpression();
-    ASTNode * primary();
+    ASTNode *andExpression();
+    ASTNode *equalityExpression();
+    ASTNode *relationalExpression();
+    ASTNode *shiftExpression();
+    ASTNode *additiveExpression();
+    ASTNode *multiplicativeExpression();
+    ASTNode *unaryExpression();
+    ASTNode *unaryExpressionNotPlusMinus();
+    ASTNode *postfixExpression();
+    ASTNode *primary();
     ASTNode *assignmentOperator();
 
 public:
-    Parser(Lexer *lexer) : lexer_(lexer) {}
+    explicit Parser(Lexer *lexer) : lexer_(lexer) {}
 };
 
 

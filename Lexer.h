@@ -8,16 +8,19 @@
 #include <unordered_map>
 #include <vector>
 
+#include "CodeViewer.h"
 #include "Position.h"
 #include "Token.h"
+#include "LexerUtils.h"
 
 
 class LexerException : public std::exception {
 private:
     std::string message_;
     Position position_;
+
 public:
-    explicit LexerException(const std::string &msg, const Position &pos)
+    explicit LexerException(const std::string &&msg, const Position &pos)
         : message_(msg), position_(pos) {}
 
     [[nodiscard]] const char *what() const noexcept override {
@@ -41,16 +44,11 @@ class Lexer {
         explicit TokenNode(const Token &tok) : token(tok) {}
     };
 
-    Position p_;
+
     TokenNode *head_;
     TokenNode *tail_;
     TokenNode *current_;
-    std::string code_;
-    std::string path_;
-    std::vector<std::string> lines_;
-    const char *begin_;
-    const char *end_;
-    char view_[2]{};
+    CodeViewer *viewer_;
 
     inline static const std::unordered_map<std::string, TokenType> KEYWORDS_ {
         {"abstract", TK_KW_ABSTRACT},
@@ -166,15 +164,6 @@ class Lexer {
         {"@", TK_ANNOTATION},
     };
 
-    void forward();
-    void forward(const int n) {
-        for (int _ = 0; _ < n; _++) {
-            forward();
-        }
-    }
-
-    [[nodiscard]] bool atEnd() const { return p_.ptr >= end_; }
-
     TokenNode * appendTokenNode(const Token &tok);
 
     static constexpr bool isTokenSplittable(const Token &token) {
@@ -186,6 +175,24 @@ class Lexer {
         }
         return false;
     }
+
+    // number handlers
+    int matchHexPrefix(TokenType &type) const;
+    int matchZeroPrefixedLiteral(TokenType &type) const;
+    int matchDecimalOrFloatingLiteral(TokenType &type) const;
+
+    [[nodiscard]] int consumeHexDigits(int &offset) const {
+        const int n = offset;
+        for (; isHexDigit(viewer_->peek(offset)); ++offset) {}
+        return offset - n;
+    }
+
+    [[nodiscard]] int consumeDigits(int &offset) const {
+        const int n = offset;
+        for (; isDigit(viewer_->peek(offset)); ++offset) {}
+        return offset - n;
+    }
+
 
     void skipSpaceAndComment();
     void lexSymbol();
@@ -199,10 +206,8 @@ class Lexer {
 
     void lex();
 
-    void parseLine();
-
 public:
-    explicit Lexer(const std::string &code, const std::string &path);
+    explicit Lexer(CodeViewer *viewer);
 
     void splitCurrentToken();
 
@@ -210,8 +215,6 @@ public:
     [[nodiscard]] const Token *currentToken() const {
         return &(current_->token);
     }
-
-    [[nodiscard]] const char *getLine(const Position &p) const;
 };
 
 

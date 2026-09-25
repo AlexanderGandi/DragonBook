@@ -57,10 +57,16 @@ enum TokenType {
 
     TK_IDENTIFIER,
 
-    TK_INT_LITERAL,
-    TK_LONG_LITERAL,
-    TK_FLOAT_LITERAL,
-    TK_DOUBLE_LITERAL,
+    TK_HEX_LITERAL,
+    TK_OCT_LITERAL,
+    TK_DECIMAL_LITERAL,
+    TK_HEX_LONG_LITERAL,
+    TK_OCT_LONG_LITERAL,
+    TK_DECIMAL_LONG_LITERAL,
+    TK_DECIMAL_FLOAT_LITERAL,
+    TK_DECIMAL_DOUBLE_LITERAL,
+    TK_HEX_FLOAT_LITERAL,
+    TK_HEX_DOUBLE_LITERAL,
 
     // keywords
     TK_KW_ABSTRACT,
@@ -121,8 +127,7 @@ const char *toString(TokenType tokenType);
 
 struct Token {
     TokenType type = TK_EOF;
-    Position begin;
-    Position end;
+    Span span;
 };
 
 
