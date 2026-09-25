@@ -50,7 +50,7 @@ class Lexer {
     TokenNode *current_;
     CodeViewer *viewer_;
 
-    inline static const std::unordered_map<std::string, TokenType> KEYWORDS_ {
+    inline static const std::unordered_map<std::string_view, TokenType> KEYWORDS_ {
         {"abstract", TK_KW_ABSTRACT},
         {"continue", TK_KW_CONTINUE},
         {"for", TK_KW_FOR},
@@ -100,7 +100,10 @@ class Lexer {
         {"float", TK_KW_FLOAT},
         {"native", TK_KW_NATIVE},
         {"super", TK_KW_SUPER},
-        {"while", TK_KW_WHILE}
+        {"while", TK_KW_WHILE},
+        {"true", TK_TRUE_LITERAL},
+        {"false", TK_FALSE_LITERAL},
+        {"null", TK_NULL_LITERAL},
     };
 
     static constexpr TokenType SPLITTABLE_TOKEN[] {
@@ -115,6 +118,7 @@ class Lexer {
     };
 
     static constexpr std::pair<std::string_view, TokenType> SYMBOLS_[] {
+        // operators
         {">>>=", TK_UNSIGNED_RIGHT_SHIFT_ASSIGN},
         {">>>", TK_UNSIGNED_RIGHT_SHIFT},
         {">>=", TK_RIGHT_SHIFT_ASSIGN},
@@ -137,31 +141,32 @@ class Lexer {
         {"^=", TK_BIT_XOR_ASSIGN},
         {"&&", TK_LOGIC_AND},
         {"||", TK_LOGIC_OR},
-        {"->", TK_ARROW},
         {"&", TK_BIT_AND},
         {"|", TK_BIT_OR},
         {"^", TK_BIT_XOR},
         {"!", TK_LOGIC_NOT},
         {"~", TK_BIT_NOT},
+        {"+", TK_PLUS},
+        {"-", TK_MINUS},
+        {"*", TK_MULT},
+        {"/", TK_DIV},
+        {"%", TK_MOD},
+        {"?", TK_QUESTION},
+        {":", TK_COLON},
+        {"=", TK_ASSIGN},
+        {"<", TK_LESS_THAN},
+        {">", TK_GREATER_THAN},
+
+        // separators
         {"(", TK_LEFT_PAREN},
         {")", TK_RIGHT_PAREN},
         {"{", TK_LEFT_BRACE},
         {"}", TK_RIGHT_BRACE},
         {"[", TK_LEFT_BRACKET},
         {"]", TK_RIGHT_BRACKET},
-        {"+", TK_PLUS},
-        {"-", TK_MINUS},
-        {"*", TK_MULT},
-        {"/", TK_DIV},
-        {"%", TK_MOD},
-        {".", TK_DOT},
         {";", TK_SEMICOLON},
-        {"?", TK_QUESTION},
-        {":", TK_COLON},
-        {"=", TK_ASSIGN},
-        {"<", TK_LESS_THAN},
-        {">", TK_GREATER_THAN},
-        {"@", TK_ANNOTATION},
+        {".", TK_DOT},
+        {",", TK_COMMA}
     };
 
     TokenNode * appendTokenNode(const Token &tok);
@@ -175,6 +180,8 @@ class Lexer {
         }
         return false;
     }
+
+    static constexpr std::string_view CONST_ESCAPE_SEQUENCE{"btnfr\"'\\"};
 
     // number handlers
     int matchHexPrefix(TokenType &type) const;
@@ -193,15 +200,22 @@ class Lexer {
         return offset - n;
     }
 
+    [[nodiscard]] int consumeOctEscape(int &offset) const;
+    [[nodiscard]] int parseEscapeChars(int &offset) const;
+
 
     void skipSpaceAndComment();
     void lexSymbol();
     void lexIdOrKeyword();
     void lexNumber();
+    void lexCharLiteral();
+    void lexString();
 
     void handleDot();
     void handleDigit();
     void handleJavaLetter();
+    void handleSingleQuote();
+    void handleDoubleQuote();
     void handlePunct();
 
     void lex();

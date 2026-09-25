@@ -10,35 +10,35 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 add_library(core
-        Token.cpp
-        Token.h
-        Position.cpp
-        Position.h
-        Lexer.cpp
-        Lexer.h
-        ASTNode.cpp
-        ASTNode.h
-        Parser.cpp
-        Parser.h
-        CodeViewer.cpp
-        CodeViewer.h
-        Environment.cpp
-        Environment.h
-        LexerUtils.cpp
-        LexerUtils.h
-        ExceptionReporter.cpp
-        ExceptionReporter.h
-        CodeManager.cpp
-        CodeManager.h
+        src/Token.cpp
+        src/Token.h
+        src/Position.cpp
+        src/Position.h
+        src/Lexer.cpp
+        src/Lexer.h
+        src/ASTNode.cpp
+        src/ASTNode.h
+        src/Parser.cpp
+        src/Parser.h
+        src/CodeViewer.cpp
+        src/CodeViewer.h
+        src/Environment.cpp
+        src/Environment.h
+        src/LexerUtils.cpp
+        src/LexerUtils.h
+        src/ExceptionReporter.cpp
+        src/ExceptionReporter.h
+        src/CodeManager.cpp
+        src/CodeManager.h
 )
 
 target_include_directories(core
         PUBLIC
-        ${PROJECT_SOURCE_DIR}
-        ${PROJECT_SOURCE_DIR}/external/include/
+        src
+        external/include
 )
 
-add_executable(DragonBook main.cpp)
+add_executable(DragonBook src/main.cpp)
 target_link_libraries(DragonBook PRIVATE core)
 
 enable_testing()

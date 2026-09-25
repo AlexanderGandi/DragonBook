@@ -7,12 +7,7 @@
 #include "Position.h"
 
 enum TokenType {
-    TK_LEFT_PAREN,                  // (
-    TK_RIGHT_PAREN,                 // )
-    TK_LEFT_BRACE,                  // {
-    TK_RIGHT_BRACE,                 // }
-    TK_LEFT_BRACKET,                // [
-    TK_RIGHT_BRACKET,               // {
+    // operators
     TK_PLUS,                        // +
     TK_PLUS_ASSIGN,                 // +=
     TK_PLUS_PLUS,                   // ++
@@ -35,11 +30,8 @@ enum TokenType {
     TK_LOGIC_OR,                    // ||
     TK_LOGIC_NOT,                   // !
     TK_BIT_NOT,                     // ~
-    TK_DOT,                         // .
-    TK_SEMICOLON,                   // ;
     TK_QUESTION,                    // ?
     TK_COLON,                       // :
-    TK_ARROW,                       // ->
     TK_ASSIGN,                      // =
     TK_EQUAL,                       // ==
     TK_NOT_EQUAL,                   // !=
@@ -53,10 +45,24 @@ enum TokenType {
     TK_RIGHT_SHIFT_ASSIGN,          // >>=
     TK_UNSIGNED_RIGHT_SHIFT_ASSIGN, // >>>=
     TK_LEFT_SHIFT_ASSIGN,           // <<=
+
     TK_ANNOTATION,                  // @
+    TK_ARROW,                       // ->
+
+    // separators
+    TK_COMMA,                       // ,
+    TK_LEFT_PAREN,                  // (
+    TK_RIGHT_PAREN,                 // )
+    TK_LEFT_BRACE,                  // {
+    TK_RIGHT_BRACE,                 // }
+    TK_LEFT_BRACKET,                // [
+    TK_RIGHT_BRACKET,               // ]
+    TK_DOT,                         // .
+    TK_SEMICOLON,                   // ;
 
     TK_IDENTIFIER,
 
+    // literals
     TK_HEX_LITERAL,
     TK_OCT_LITERAL,
     TK_DECIMAL_LITERAL,
@@ -67,6 +73,11 @@ enum TokenType {
     TK_DECIMAL_DOUBLE_LITERAL,
     TK_HEX_FLOAT_LITERAL,
     TK_HEX_DOUBLE_LITERAL,
+    TK_CHAR_LITERAL,
+    TK_TRUE_LITERAL,
+    TK_FALSE_LITERAL,
+    TK_NULL_LITERAL,
+    TK_STRING_LITERAL,
 
     // keywords
     TK_KW_ABSTRACT,

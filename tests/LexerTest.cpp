@@ -5,8 +5,8 @@
 #include <format>
 #include <string_view>
 
-#include "Lexer.h"
-#include "Token.h"
+#include "../src/Lexer.h"
+#include "../src/Token.h"
 #include "gtest/gtest.h"
 
 void PrintTo(const TokenType tokenType, std::ostream *os) {
@@ -42,6 +42,28 @@ static void checkNumberCases(const NumberCase *cases, const size_t count) {
         ASSERT_EQ(token->type, expectedType);
         EXPECT_EQ(token->span.content, std::string_view(source));
         EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
+    }
+}
+
+struct LiteralCase {
+    const char *source;
+    TokenType type;
+};
+
+static void checkLiteralCases(const LiteralCase *cases, const size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        const auto &[source, expectedType] = cases[i];
+        SCOPED_TRACE(std::format("Checking: {}", source));
+
+        try {
+            auto lexer = createLexer(source);
+            const auto *token = lexer->currentToken();
+            ASSERT_EQ(token->type, expectedType);
+            EXPECT_EQ(token->span.content, std::string_view(source));
+            EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
+        } catch (LexerException &e) {
+            FAIL() << "unknown lex exception throws: " << e.what();
+        }
     }
 }
 
@@ -167,6 +189,69 @@ TEST(LexerTest, InvalidNumberLiterals) {
         try {
             auto lexer = createLexer(code);
             FAIL() << "Expected LexerException for invalid numeric literal";
+        } catch (const LexerException &e) {
+            EXPECT_STREQ(e.what(), message);
+        }
+    }
+}
+
+TEST(LexerTest, CharacterLiterals) {
+    constexpr LiteralCase cases[] = {
+        {"'a'", TK_CHAR_LITERAL},
+        {"'Z'", TK_CHAR_LITERAL},
+        {"'7'", TK_CHAR_LITERAL},
+        {"' '", TK_CHAR_LITERAL},
+        {"'\\n'", TK_CHAR_LITERAL},
+        {"'\\''", TK_CHAR_LITERAL},
+        {"'\\\\'", TK_CHAR_LITERAL},
+        {"'\\141'", TK_CHAR_LITERAL},
+        {"'\\u0041'", TK_CHAR_LITERAL},
+    };
+    checkLiteralCases(cases, sizeof(cases) / sizeof(cases[0]));
+}
+
+TEST(LexerTest, StringLiterals) {
+    constexpr LiteralCase cases[] = {
+        {"\"\"", TK_STRING_LITERAL},
+        {"\"hello\"", TK_STRING_LITERAL},
+        {"\"hello world\"", TK_STRING_LITERAL},
+        {"\"123 + 456\"", TK_STRING_LITERAL},
+        {"\"line\\ntext\"", TK_STRING_LITERAL},
+        {"\"quote: \\\"\"", TK_STRING_LITERAL},
+        {"\"backslash: \\\\\"", TK_STRING_LITERAL},
+        {"\"octal: \\141\"", TK_STRING_LITERAL},
+        {"\"unicode: \\u0041\"", TK_STRING_LITERAL},
+    };
+    checkLiteralCases(cases, sizeof(cases) / sizeof(cases[0]));
+}
+
+TEST(LexerTest, CharacterAndStringLiteralBoundaries) {
+    auto lexer = createLexer("'a'\"text\"");
+    EXPECT_EQ(lexer->currentToken()->type, TK_CHAR_LITERAL);
+    EXPECT_EQ(lexer->currentToken()->span.content, "'a'");
+    EXPECT_EQ(lexer->nextToken()->type, TK_STRING_LITERAL);
+    EXPECT_EQ(lexer->currentToken()->span.content, "\"text\"");
+    EXPECT_EQ(lexer->nextToken()->type, TK_EOF);
+}
+
+TEST(LexerTest, InvalidCharacterAndStringLiterals) {
+    constexpr std::pair<const char *, const char *> errorSamples[] = {
+        {"''", "empty character literal"},
+        {"'ab'", "unclosed character literal"},
+        {"'a", "unclosed character literal"},
+        {"'\\q'", "illegal escape character"},
+        {"\"unterminated", "unclosed string literal"},
+        {"\"bad\\q\"", "illegal escape character"},
+        {"\"\\\"", "unclosed string literal"},
+        {"\'\\\'", "unclosed character literal"},
+    };
+
+    for (const auto &[source, message] : errorSamples) {
+        SCOPED_TRACE(std::format("Checking: {}", source));
+        try {
+            auto lexer = createLexer(source);
+            (void) lexer;
+            FAIL() << "Expected LexerException for invalid literal";
         } catch (const LexerException &e) {
             EXPECT_STREQ(e.what(), message);
         }

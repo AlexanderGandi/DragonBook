@@ -4,6 +4,7 @@
 
 #include "Lexer.h"
 
+#include <format>
 #include <sstream>
 
 
@@ -177,6 +178,55 @@ int Lexer::matchDecimalOrFloatingLiteral(TokenType &type) const {
     return n;
 }
 
+int Lexer::consumeOctEscape(int &offset) const {
+    const auto c1 = viewer_->peek(offset);
+    const auto c2 = viewer_->peek(offset + 1);
+    const auto c3 = viewer_->peek(offset + 2);
+
+    if (!isOctDigit(c1)) {
+        return 0;
+    }
+
+    if (!isOctDigit(c2)) {
+        offset += 1;
+        return 1;
+    }
+
+    if (!isOctDigit(c3) || c1 < '0' || c1 > '3') {
+        offset += 2;
+        return 2;
+    }
+
+    offset += 3;
+    return 3;
+}
+
+int Lexer::parseEscapeChars(int &offset) const {
+    auto n = 1;
+    auto i = offset + 1;
+    auto c = viewer_->peek(i);
+    if (CONST_ESCAPE_SEQUENCE.find(c) != std::string_view::npos) {
+        ++n;
+        ++i;
+    } else if (isOctDigit(c)) {
+        n += consumeOctEscape(i);
+    } else if (c == 'u') {
+        while ((c = viewer_->peek(++i)) == 'u') {}
+        for (int j = 0; j < 4; ++j) {
+            if (!isHexDigit(viewer_->peek(i + j))) {
+                throw LexerException("illegal unicode escape", viewer_->getPosition(i + j));
+            }
+        }
+        i += 4;
+        n += 4;
+    } else {
+        throw LexerException("illegal escape character", viewer_->getPosition(i));
+    }
+
+    offset = i;
+    return n;
+}
+
 void Lexer::skipSpaceAndComment() {
     while (true) {
         if (isspace(viewer_->peek())) {
@@ -222,7 +272,7 @@ void Lexer::lexIdOrKeyword() {
     for (n = 0; isJavaLetter(viewer_->peek(n)) || isDigit(viewer_->peek(n)); ++n) {}
 
     const auto span = viewer_->eat(n);
-    const auto it = KEYWORDS_.find(std::string(span.content));
+    const auto it = KEYWORDS_.find(span.content);
 
     appendTokenNode({
         .type = it == KEYWORDS_.end() ? TK_IDENTIFIER : it->second,
@@ -250,6 +300,56 @@ void Lexer::lexNumber() {
     }
 }
 
+void Lexer::lexCharLiteral() {
+    int n = 1;
+    auto c = viewer_->peek(n);
+
+    if (c == '\'') {
+        throw LexerException("empty character literal", viewer_->getPosition());
+    }
+
+    if (c != '\\') {
+        if (viewer_->peek(++n) != '\'') {
+            throw LexerException("unclosed character literal", viewer_->getPosition());
+        }
+        appendTokenNode({
+            .type = TK_CHAR_LITERAL, .span = viewer_->eat(n + 1)
+        });
+        return;
+    }
+
+    (void)parseEscapeChars(n);
+    c = viewer_->peek(n++);
+    if (c != '\'') {
+        throw LexerException("unclosed character literal", viewer_->getPosition());
+    }
+
+    appendTokenNode({
+        .type = TK_CHAR_LITERAL, .span = viewer_->eat(n + 1)
+    });
+}
+
+void Lexer::lexString() {
+    auto n = 1;
+    auto c = viewer_->peek(n);
+    while (c != '\0' && c != '"') {
+        if (c == '\\') {
+            (void)parseEscapeChars(n);
+        } else {
+            ++n;
+        }
+        c = viewer_->peek(n);
+    }
+
+    if (c != '"') {
+        throw LexerException("unclosed string literal", viewer_->getPosition());
+    }
+
+    appendTokenNode({
+        .type = TK_STRING_LITERAL, .span = viewer_->eat(n + 1)
+    });
+}
+
 void Lexer::handleDot() {
     if (isDigit(viewer_->peek(1))) {
         lexNumber();
@@ -268,6 +368,14 @@ void Lexer::handleJavaLetter() {
     lexIdOrKeyword();
 }
 
+void Lexer::handleSingleQuote() {
+    lexCharLiteral();
+}
+
+void Lexer::handleDoubleQuote() {
+    lexString();
+}
+
 void Lexer::handlePunct() {
     lexSymbol();
 }
@@ -282,11 +390,17 @@ void Lexer::lex() {
         return;
     }
 
-    if (isdigit(viewer_->peek())) {
+    auto c = viewer_->peek();
+
+    if (isdigit(c)) {
         handleDigit();
-    } else if (viewer_->peek() == '.') {
+    } else if (c == '.') {
         handleDot();
-    } else if (isJavaLetter(viewer_->peek())) {
+    } else if (c == '\'') {
+        handleSingleQuote();
+    } else if (c == '"') {
+        handleDoubleQuote();
+    } else if (isJavaLetter(c)) {
         handleJavaLetter();
     } else {
         handlePunct();
