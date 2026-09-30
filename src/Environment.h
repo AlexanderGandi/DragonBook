@@ -4,21 +4,31 @@
 
 #ifndef DRAGONBOOK_SYMBOLTABLE_H
 #define DRAGONBOOK_SYMBOLTABLE_H
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-enum class SymbolScope {
-    PUBLIC,
-    PROTECT,
-    PRIVATE,
-    STACK,
+enum Modifier : uint16_t {
+    M_PUBLIC = 0x01,
+    M_PROTECTED = 0x02,
+    M_PRIVATE = 0x04,
+    M_FINAL = 0x08,
+    M_STATIC = 0x10,
+};
+
+enum class SymbolClass : uint16_t {
+    CLASS,
+    METHOD,
+    VARIABLE,
+    PACKAGE,
 };
 
 struct Symbol {
     std::string name;
-    std::string type;
-    SymbolScope scope;
+    std::string dataType;
+    uint16_t flags{0};
+    SymbolClass clazz{SymbolClass::VARIABLE};
 };
 
 using SymbolTable = std::unordered_map<std::string, Symbol>;
@@ -37,18 +47,22 @@ public:
         children_.push_back(table);
     }
 
-    Symbol *get(const std::string &name) {
-        Environment *current = this;
-        while (current != nullptr) {
-            auto &table = current->table_;
-            auto it = table.find(name);
-            if (it != table.end()) {
-                return &(it->second);
-            }
-            current = current->parent_;
+    void define(const Symbol &symbol) {
+        table_[symbol.name] = symbol;
+    }
+
+    Symbol *resolve(const std::string &name) {
+        auto it = table_.find(name);
+        if (it != table_.end()) {
+            return &(it->second);
+        }
+        if (parent_ != nullptr) {
+            return parent_->resolve(name);
         }
         return nullptr;
     }
+
+    Environment *getParent() const { return parent_; }
 };
 
 

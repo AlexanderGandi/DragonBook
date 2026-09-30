@@ -8,27 +8,43 @@
 #include <string_view>
 #include <vector>
 
-enum ASTNodeType {
-    N_EMPTY,
-    N_UNARY_OP,
-    N_BINARY_OP,
+#include "Token.h"
+
+enum class ASTNodeType {
+    EMPTY,
+    UNARY_OP,
+    BINARY_OP,
 };
 
 struct ASTNode {
-    ASTNodeType type{N_EMPTY};
+    ASTNodeType type{ASTNodeType::EMPTY};
     ASTNode *parent{nullptr};
     std::vector<ASTNode *> children;
-
-    std::string_view op;
-    int8_t byteValue{0};
-    int16_t shortValue{0};
-    int32_t intValue{0};
-    int64_t longValue{0};
 
     void addChild(ASTNode *node) {
         node->parent = this;
         children.push_back(node);
     }
+};
+
+struct Literal : public ASTNode {
+    Token *token;
+    explicit Literal(Token *token) : token(token) {}
+};
+
+struct BinaryOp : public ASTNode {
+    Token *token;
+    BinaryOp(Token *token, ASTNode *left, ASTNode *right);
+};
+
+struct UnaryOp : public ASTNode {
+    Token *token;
+    UnaryOp(Token *token, ASTNode *operand);
+};
+
+struct Type : public ASTNode {
+    Token *token;
+    explicit Type(Token *token) : token(token) {}
 };
 
 

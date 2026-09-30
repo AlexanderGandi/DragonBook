@@ -20,7 +20,7 @@ private:
     Position position_;
 
 public:
-    explicit LexerException(const std::string &&msg, const Position &pos)
+    explicit LexerException(std::string &&msg, const Position &pos)
         : message_(msg), position_(pos) {}
 
     [[nodiscard]] const char *what() const noexcept override {
@@ -101,8 +101,8 @@ class Lexer {
         {"native", TK_KW_NATIVE},
         {"super", TK_KW_SUPER},
         {"while", TK_KW_WHILE},
-        {"true", TK_TRUE_LITERAL},
-        {"false", TK_FALSE_LITERAL},
+        {"true", TK_BOOLEAN_LITERAL},
+        {"false", TK_BOOLEAN_LITERAL},
         {"null", TK_NULL_LITERAL},
     };
 
@@ -225,9 +225,15 @@ public:
 
     void splitCurrentToken();
 
-    const Token *nextToken();
-    [[nodiscard]] const Token *currentToken() const {
+    Token *nextToken();
+    [[nodiscard]] Token *currentToken() const {
         return &(current_->token);
+    }
+
+    [[nodiscard]] Token *eatToken() {
+        auto token = &(current_->token);
+        nextToken();
+        return token;
     }
 };
 

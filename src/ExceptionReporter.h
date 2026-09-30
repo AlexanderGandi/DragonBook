@@ -4,14 +4,17 @@
 
 #ifndef DRAGONBOOK_EXCEPTIONREPORTER_H
 #define DRAGONBOOK_EXCEPTIONREPORTER_H
+#include "CodeManager.h"
 #include "Lexer.h"
 
 
 class ExceptionReporter {
+private:
+    CodeManager *manager_;
 public:
-    ExceptionReporter() = default;
-    void report(LexerException &e);
-    void report(CodeViewerException &e);
+    explicit ExceptionReporter(CodeManager *manager) : manager_(manager) {}
+    void report(const LexerException &e);
+    void report(const CodeViewerException &e);
 };
 
 

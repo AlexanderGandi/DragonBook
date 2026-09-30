@@ -3,3 +3,12 @@
 //
 
 #include "ASTNode.h"
+
+BinaryOp::BinaryOp(Token *token, ASTNode *left, ASTNode *right) : token(token) {
+    addChild(left);
+    addChild(right);
+}
+
+UnaryOp::UnaryOp(Token *token, ASTNode *operand) : token(token) {
+    addChild(operand);
+}

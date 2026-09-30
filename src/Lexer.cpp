@@ -424,7 +424,7 @@ void Lexer::splitCurrentToken() {
 
 }
 
-const Token * Lexer::nextToken() {
+Token * Lexer::nextToken() {
     if (current_->next == tail_) {
         lex();
     }

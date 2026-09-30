@@ -33,6 +33,9 @@ void CodeViewer::parseLine() {
             }
         }
     }
+    lines_.push_back(
+        codeView_.substr(lineStarts_.back(), codeView_.size() - lineStarts_.back())
+        );
 }
 
 int CodeViewer::findLineByIndex(const int i) const {
@@ -42,7 +45,7 @@ int CodeViewer::findLineByIndex(const int i) const {
     const auto len = lineStarts_.size();
     for (auto start = 0; start < len && lineStarts_[start] < i; ++start) {
         if (start + 1 < len && lineStarts_[start + 1] >= i) {
-            return start;
+            return start + 1;
         }
     }
     return lineStarts_.size();
@@ -73,19 +76,30 @@ void CodeViewer::forward() {
 }
 
 Line CodeViewer::getLine(const Cursor &cursor) const {
-    auto line = findLineByIndex(cursor.idx);
+    const auto line = findLineByIndex(cursor.idx);
     return {
         line,
-        lines_[line]
+        lines_[line - 1]
     };
 }
 
 Line CodeViewer::getLine(int line) const {
-    if (line < 1 || line >= lines_.size()) {
+    if (line < 1 || line > lines_.size()) {
         throw CodeViewerException(std::format("line index {} out of range", line));
     }
     return {
         line,
-        lines_[line]
+        lines_[line - 1]
     };
+}
+
+int CodeViewer::getColIdx(const Cursor &cursor) const {
+    const auto line = findLineByIndex(cursor.idx) - 1;
+    int sub = 0;
+
+    for (int i = 0; i < line; ++i) {
+        sub += lines_[i].size();
+    }
+
+    return cursor.idx - sub + 1;
 }

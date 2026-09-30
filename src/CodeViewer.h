@@ -83,11 +83,12 @@ public:
 
     [[nodiscard]] Line getLine(const Cursor &cursor) const;
     [[nodiscard]] Line getLine(int line) const;
-    [[nodiscard]] const Position getPosition() const { return { .cursor = c_, .file = path_.c_str() }; }
-    [[nodiscard]] const Position getPosition(int n) const {
+    [[nodiscard]] int getColIdx(const Cursor &cursor) const;
+    [[nodiscard]] Position getPosition() const { return { .cursor = c_, .file = path_.empty() ? nullptr : path_.c_str() }; }
+    [[nodiscard]] Position getPosition(const int n) const {
         return {
             .cursor = {c_.idx + n},
-            .file = path_.c_str()
+            .file = path_.empty() ? nullptr : path_.c_str()
         };
     }
 };
